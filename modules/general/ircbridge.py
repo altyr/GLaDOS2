@@ -41,7 +41,7 @@ class IRCBridge(glados.Module):
             self.socket.connect((self.host, self.port))
             self.send_raw_message('USER {0} {0} {0} :{0}\n'.format(self.botnick))
             if not self.irc_settings['password'] == '':
-                #self.send_raw_message('PRIVMSG NickServ :IDENTIFY {} {}\n'.format(self.botnick, self.irc_settings['password']))
+                # self.send_raw_message('PRIVMSG NickServ :IDENTIFY {} {}\n'.format(self.botnick, self.irc_settings['password']))
                 self.send_raw_message('PASS {}\n'.format(self.irc_settings['password']))
             self.send_raw_message('NICK {}\n'.format(self.botnick))
             self.state = self.STATE_TRY_JOIN
@@ -97,7 +97,7 @@ class IRCBridge(glados.Module):
                             self.discord_channels = self.get_discord_channels(self.irc_settings['discord channels'])
                         if self.bridge_enable:
                             match = re.match('^.*PRIVMSG #.*? :(.*)$', msg)
-                            if not match is None:
+                            if match is not None:
                                 resp = match.group(1)
                                 for channel in self.discord_channels:
                                     try:
@@ -133,7 +133,7 @@ class IRCBridge(glados.Module):
             return ()
         if message.content[0] == self.command_prefix:
             return ()
-        if not message.channel.id in self.irc_settings['discord channels']:
+        if message.channel.id not in self.irc_settings['discord channels']:
             return ()
         author = message.author.name
         content = self.substitute_mentions(message)
@@ -142,7 +142,7 @@ class IRCBridge(glados.Module):
 
     @glados.Module.commands('irc')
     def on_irc_enable(self, message, args):
-        if not message.author.id in self.settings['admins']['IDs']:
+        if message.author.id not in self.settings['admins']['IDs']:
             return ()
 
         self.bridge_enable = not self.bridge_enable
