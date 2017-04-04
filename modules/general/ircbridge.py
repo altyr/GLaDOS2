@@ -7,6 +7,39 @@ import sys
 import copy
 import re
 import socks
+import ssl
+
+
+class HybridSocket(object):
+
+    MODE_SOCKET = 0
+    MODE_PYSOCKS = 1
+
+    def __init__(self, host, port, ssl_enable, ssl_verify, proxyhost, proxyport):
+        assert not (ssl_enable and proxyhost), "Simultaneous usage of proxy and SSL is not supported"
+
+        if proxyhost:
+            self.mode = self.MODE_PYSOCKS
+            self.socket = socks.socksocket()
+            self.socket.setproxy(socks.PROXY_TYPE_SOCKS5, proxyhost, proxyport, True)
+            self.socket.connect((host, port))
+        else:
+            self.mode = self.MODE_SOCKET
+            if ssl_enable:
+                sslctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                if not ssl_verify:
+                    sslctx.check_hostname = False
+                    sslctx.verify_mode = ssl.CERT_NONE
+                self.socket = sslctx.wrap_socket(socket.create_connection((host, port)), server_hostname=host)
+            else:
+                self.socket = socket.create_connection((host, port))
+            self.socket.connect()
+
+    def send(self, msg):
+        return self.socket.send(msg)
+
+    def recv(self, num):
+        return self.socket.recv(num)
 
 
 class IRCBridge(glados.Module):
@@ -21,7 +54,11 @@ class IRCBridge(glados.Module):
         self.settings = settings
         self.irc_settings = settings['irc']
         self.host = self.irc_settings['host']
-        self.port = self.irc_settings['port']
+        self.port = int(self.irc_settings['port'])
+        self.proxyhost = self.irc_settings['proxy host']
+        self.proxyport = int(self.irc_settings['proxy port'])
+        self.secure = True if self.irc_settings['secure connection'] == 'true' else False
+        self.verify = True if self.irc_settings['verify security'] == 'true' else False
         self.botnick = self.irc_settings['nick']
         self.irc_channels = self.irc_settings['irc channels']
         self.discord_channels = list()
@@ -35,10 +72,7 @@ class IRCBridge(glados.Module):
         self.channels_to_join = copy.deepcopy(self.irc_channels)
         glados.log('Connecting to: {}:{}'.format(self.host, self.port))
         try:
-            self.socket = socks.socksocket()
-            if not self.irc_settings['proxy host'] == 'none' and not self.irc_settings['proxy port'] == 'none':
-                self.socket.setproxy(socks.PROXY_TYPE_SOCKS5, self.irc_settings['proxy host'], int(self.irc_settings['proxy port']), True)
-            self.socket.connect((self.host, self.port))
+            self.socket = HybridSocket(self.host, self.port, self.secure, self.verify, self.proxyhost, self.proxyport)
             self.send_raw_message('USER {0} {0} {0} :{0}\n'.format(self.botnick))
             if not self.irc_settings['password'] == '':
                 # self.send_raw_message('PRIVMSG NickServ :IDENTIFY {} {}\n'.format(self.botnick, self.irc_settings['password']))
