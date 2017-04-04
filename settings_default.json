@@ -6,6 +6,7 @@
     "method": "token"
   },
   "irc": {
+    "enable": "false",
     "host": "irc.afternet.org",
     "port": 6667,
     "proxy host": "",

@@ -33,7 +33,6 @@ class HybridSocket(object):
                 self.socket = sslctx.wrap_socket(socket.create_connection((host, port)), server_hostname=host)
             else:
                 self.socket = socket.create_connection((host, port))
-            self.socket.connect()
 
     def send(self, msg):
         return self.socket.send(msg)
